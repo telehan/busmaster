@@ -2,7 +2,7 @@
 ; Critical (C)		:		Y
 ; TestCase No.		:		TS_J1939_DBE_07
 ; TestCases			:		Database Usage in Busmaster
-; Test Data			:		
+; Test Data			:
 ; Test Setup		:		1. Associate a Database
 ;~ 							2. Select menu option 'J1939 -> Database -> Disassociate…'.
 ;~ 							3. Select database file in list and click on 'Dissociate'.
@@ -23,7 +23,8 @@ if winexists($WIN_BUSMASTER) then
 	_AssociateJ1939DB("testJ1939DBE_06")						; Associate DB
 	_DissociateJ1939DB(0)										; Dissociate DB
 	$Res=0
-	if winexists("",$disDBtxt) Then
+	Opt("WinTextMatchMode", 1)
+	if winexists("",$disDBtxt1) Then
 		$Res=1
 		consolewrite("Dissociation will clear Signal Watch List window exists" & @CRLF)
 		WinActivate("",$disDBtxt)
@@ -34,6 +35,7 @@ if winexists($WIN_BUSMASTER) then
 	ConsoleWrite("$assocDBCount : " & $assocDBCount &@CRLF)
 	ControlClick($WIN_Dissociate_CANDB,"",$BTN_Cancel_Dis_CANDB)						; Click on 'Cancel' button in Dissociate database window
 	ConsoleWrite("$Res : " & $Res &@CRLF)
+
 EndIf
 ;~ WinWaitActive($WIN_BUSMASTER,$disDBtxt,4)
 if $Res=1 Then

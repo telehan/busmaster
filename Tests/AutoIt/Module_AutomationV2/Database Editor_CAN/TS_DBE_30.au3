@@ -89,7 +89,9 @@ If winexists($WIN_BUSMASTER) then
 ;~ 	_CreateConfig("cfxCANDB_30.cfx")																	; Create Configuration
 
 	_openCANDB("testDBE_30.DBF")																		; Open the DB
-
+	;------Maximize Child Window DatabaseEditor - CAN---------------
+	_Maximize_childWindow("DatabaseEditor - CAN")
+	sleep(1000)
 	ControlClick($WIN_DBEditor_CAN,"",$BTN_NewSignal_DBEditor)											; Click on 'New Signal'
 
 	if WinWaitActive($WIN_Signal_Details,"",3) Then
@@ -209,7 +211,7 @@ If winexists($WIN_BUSMASTER) then
 	ConsoleWrite($PopUpMenu&@Crlf)
 
 	ControlClick($WIN_DBEditor_CAN,"",$BTN_SigDes_DBEditor)											; Click on 'New Desc' button
-	if WinWaitActive($WIN_Signal_Desc,"",3) Then
+	if WinWaitActive($WIN_Signal_Desc,"",10) Then
 		ControlClick($WIN_Signal_Desc, "", $BTN_OK_SigDesc) 										; Click 'OK'
 		if WinWaitActive("",$TXT_EmptySigDesc_BM,3) Then
 			$NullSigDesc=1
@@ -224,6 +226,12 @@ if $Sig2=1 and $Sig3=1 and $PopUpMenu=1 and $NullSigDesc=1 Then
 Else
 	_WriteResult("Fail","TS_DBE_30")
 EndIf
+
+	_ActivatechildWindow($WIN_DBEditor_CAN1)
+	WinClose($WIN_DBEditor_CAN1)
+	if WinWaitActive($WIN_BUSMASTER,$saveDBtxt,2) Then
+		ControlClick($WIN_BUSMASTER,"",$BTN_No_SaveDB)
+	EndIf
 
 $isAppNotRes=_CloseApp()																				; Close the app
 

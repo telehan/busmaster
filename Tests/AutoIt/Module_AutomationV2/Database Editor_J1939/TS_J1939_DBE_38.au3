@@ -47,6 +47,10 @@ If winexists($WIN_BUSMASTER) then
 
 	_openJ1939DB("testj1939DBE_38.DBF")																		; Open the DB
 
+	;------Maximize Child Window DatabaseEditor - J1939---------------
+	_Maximize_childWindow("DatabaseEditor - J1939")
+	sleep(1000)
+
 	$sigDetlvhwd=controlgethandle($WIN_BUSMASTER,"",$LVC_SigDet_DBeditor)								; Get handle of signal details list view
 	_GUICtrlListView_ClickItem($sigDetlvhwd,0)
 	sleep(500)
@@ -91,6 +95,11 @@ If winexists($WIN_BUSMASTER) then
 	ConsoleWrite($GetPopUp_Text[1]&@Crlf)
 	ConsoleWrite($GetPopUp_Text[2]&@Crlf)
 
+	_ActivatechildWindow($WIN_DBEditor_J19391)
+	WinClose($WIN_DBEditor_J19391)
+	if WinWaitActive($WIN_BUSMASTER,$saveDBtxt,2) Then
+		ControlClick($WIN_BUSMASTER,"",$BTN_No_SaveDB)
+	EndIf
 EndIf
 
 ConsoleWrite("$DupSigDesc: "&$DupSigDesc&@CRLF)

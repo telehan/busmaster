@@ -47,6 +47,10 @@ If winexists($WIN_BUSMASTER) then
 
 	_openCANDB("testDBE_38.DBF")																		; Open the DB
 
+	;------Maximize Child Window DatabaseEditor - CAN---------------
+	_Maximize_childWindow("DatabaseEditor - CAN")
+	sleep(1000)
+
 	$sigDetlvhwd=controlgethandle($WIN_BUSMASTER,"",$LVC_SigDet_DBeditor)								; Get handle of signal details list view
 	_GUICtrlListView_ClickItem($sigDetlvhwd,0)
 	sleep(500)
@@ -72,7 +76,7 @@ If winexists($WIN_BUSMASTER) then
 	EndIf
 
 	send("{ESC}")																						; Close the value descriptor and value dialog
-	sleep(500)
+	sleep(1500)
 
 	$sigDesclvhwd=controlgethandle($WIN_BUSMASTER,"",$LVC_SigDesc_SigDesc)								; Get handle of signal description list view
 	_GUICtrlListView_ClickItem($sigDesclvhwd,0,"Right")													; right click on the first signal descriptor
@@ -86,6 +90,12 @@ If winexists($WIN_BUSMASTER) then
 		EndIf
 	EndIf
 	send("{ESC}")
+   ControlClick($WIN_DBEditor_CAN,"",$LVC_SigDet_DBeditor)
+   	_ActivatechildWindow($WIN_DBEditor_CAN1)
+	WinClose($WIN_DBEditor_CAN1)
+	if WinWaitActive($WIN_BUSMASTER,$saveDBtxt,2) Then
+		ControlClick($WIN_BUSMASTER,"",$BTN_No_SaveDB)
+	EndIf
 
 	ConsoleWrite($GetPopUp_Text[0]&@Crlf)
 	ConsoleWrite($GetPopUp_Text[1]&@Crlf)

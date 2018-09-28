@@ -39,6 +39,9 @@ Local $SaveDBWin=0
 If winexists($WIN_BUSMASTER) then
 
 	_createCANDB("testDBE_45")																			; Create New Database File
+	;------Maximize Child Window DatabaseEditor - CAN---------------
+	_Maximize_childWindow("DatabaseEditor - CAN")
+	sleep(1000)
 
 	_DBmessage("n")																						; Select 'New Message' from right click menu
 
@@ -48,14 +51,14 @@ If winexists($WIN_BUSMASTER) then
 
 	_addSigDetails("int","Signal1",32,0,0)																; Add the signal details
 
-	WinMenuSelectItem($WIN_BUSMASTER,"",$CANMenu,$databaseMenu,$closeMenu)								; Select CAN->Database->Close
+	WinRibbonSelectItem($WIN_BUSMASTER,"",$Tool,$CANDBMenuTool,$closeMenuDBEditor)								; Select CAN->Database->Close
 
 	if WinWaitActive($WIN_BUSMASTER,$saveDBtxt,2) Then
 		ControlClick($WIN_BUSMASTER,"",$BTN_Yes_SaveDB)													; Click on 'Yes' button
 		$SaveDBWin=1
 	EndIf
 
-	WinMenuSelectItem($WIN_BUSMASTER,"",$CANMenu,$databaseMenu,$openMenu)
+	WinRibbonSelectItem("BUSMASTER - [DatabaseEditor - CAN]","",$Tool,$CANDBMenuTool,$openMenu)
 
 	$DirPath = _OutputDataPath()																		; Set the DirPath to saved dbf file path
 	if WinWaitActive($WIN_SelCAN_DBFile,"",5) Then
@@ -64,11 +67,11 @@ If winexists($WIN_BUSMASTER) then
 		$cDB=ControlClick($WIN_SelCAN_DBFile,"",$BTN_OpenInst_OpenDB) 									; Click on open button
 		sleep(1000)
 	EndIf
-
+	sleep(1000)
 	$sigDetlvhwd=controlgethandle($WIN_BUSMASTER,"",$LVC_SigDet_DBeditor)								; Get handle of signal details list view
 	$SignalCount=_GUICtrlListView_GetItemCount($sigDetlvhwd)											; Fetch the signal count
 
-	WinMenuSelectItem($WIN_BUSMASTER,"",$CANMenu,$databaseMenu,$closeMenu)								; Select CAN->Database->Close
+	WinRibbonSelectItem($WIN_BUSMASTER,"",$Tool,$CANDBMenuTool,$closeMenuDBEditor)								; Select CAN->Database->Close
 
 EndIf
 

@@ -25,12 +25,18 @@
 !include "NSISHeaders.nsh"
 !include "MUI2.nsh"
 
+!include "Sections.nsh"
+
 !define MUI_WELCOMEFINISHPAGE_BITMAP "welcomefinishpage.bmp"
 !define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of BUSMASTER on your system."
 !define MUI_HEADERIMAGE
 !define MUI_HEADERIMAGE_BITMAP "headerimage.bmp"
-!define MUI_ICON  "..\Sources\Application\Res\BUSMASTER.ico"
-!define MUI_UNICON "..\Sources\Application\Res\Uninstaller.ico"
+!define MUI_ICON  "..\Sources\BUSMASTER\Application\Res\BUSMASTER.ico"
+!define MUI_UNICON "..\Sources\BUSMASTER\Application\Res\Uninstaller.ico"
+
+!define Flexray_Key "1"
+!define Instruments_Key "2"
+!define CANFD_Key "2"
 
 !macro StrStr ResultVar String SubString
   Push `${String}`
@@ -111,6 +117,15 @@ Var STR_CONTAINS_VAR_2
 Var STR_CONTAINS_VAR_3
 Var STR_CONTAINS_VAR_4
 Var STR_RETURN_VAR
+
+var COMP_BM
+var COMP_ADD_ONS
+var COMP_FLEXRAY
+var COMP_Instruments
+var COMP_CANFD
+var COMP_PAGE_INIT
+var DeleteLicenseFiles
+
 Function StrContains
   Exch $STR_NEEDLE
   Exch 1
@@ -172,11 +187,12 @@ CRCCheck On
 
 ; Output filename
 Outfile "BUSMASTER_Installer_Ver_${VERSION}.exe"
+RequestExecutionLevel admin ; Request for admin rights of installation and uninstallation 
 
 Function .onInit
   ; the plugins dir is automatically deleted when the installer exits
   InitPluginsDir
-  File /oname=$PLUGINSDIR\Splsh16.bmp "..\Sources\BIN\Release\Splsh16.bmp"
+  File /oname=$PLUGINSDIR\Splsh16.bmp "..\Sources\BUSMASTER\BIN\Release\Splsh16.bmp"
   ;optional
   ;File /oname=$PLUGINSDIR\splash.wav "C:\myprog\sound.wav"
 
@@ -185,6 +201,8 @@ Function .onInit
   Pop $0 ; $0 has '1' if the user closed the splash screen early,
          ;        '0' if everything closed normally, and
          ;       '-1' if some error occurred.
+		 
+
 FunctionEnd
 
 ; The default installation folder
@@ -195,12 +213,12 @@ DirText "Please select an installation folder."
 
 Var LABEL
 Function onClickMinGWLink
-  ExecShell "open" "http://sourceforge.net/projects/mingw/files/Installer/mingw-get-inst/"
+  ExecShell "open" "http://sourceforge.net/projects/tdm-gcc/files/TDM-GCC%20Installer/Previous/1.1309.0/tdm-gcc-4.8.1.exe/download"
 FunctionEnd
 
 Function onClickBMHelpLink
   StrCpy $0 $WINDIR\hh.exe
-  Exec '"$0" mk:@MSITStore:$INSTDIR\BUSMASTER.chm::/topics/MinGW%20Installation.html'
+  Exec '"$0" mk:@MSITStore:$INSTDIR\BUSMASTER.chm::/topics/MinGW_Installation_TDM.html'
 FunctionEnd
 
 Function information
@@ -216,35 +234,26 @@ nsDialogs::Create 1018
   ${EndIf}
 
   ; Execution will come here if .NET framework is not installed. Inform User of the necessary actions.
-  ${NSD_CreateLabel} 0 20 100% 40  "Microsoft .NET Framework is not installed! Please install from below link:"
-  ${NSD_CreateLink} 0 75 100% 12   "http://www.microsoft.com/en-in/download/details.aspx?id=17851"
-  Goto FinishedShow
+  ${NSD_CreateLabel} 0 60 100% 40  "Microsoft .NET Framework is not installed! Please install from below link:"
+  ${NSD_CreateLink} 0 115 100% 12   "http://www.microsoft.com/en-in/download/details.aspx?id=17851"
 
 NETFrameworkInstalled:
-  ; Check for MINGW installation
 
-  ReadEnvStr $R0 "PATH"
 
-  ${StrStr} $0 $R0 "MinGW"
 
-  ${StrContains} $0 "MinGW" $R0
 
-  StrCmp $0 "" notfound
-  ${NSD_CreateLabel} 0 20 100% 40 "The necessary .Net framework and MinGW packages are available in your PC."
-  Goto FinishedShow
 
-notfound:
-  ${NSD_CreateLabel} 0 20 100% 40 "-> The following steps should be followed to install MinGW folder for Node simulation. $\n Download latest mingw executable from the following link:"
+  ${NSD_CreateLabel} 0 60 100% 40 "-> The following steps should be followed to install MinGW folder for Node simulation. $\n Download latest mingw executable from the following link:"
   Pop $Label
-  ${NSD_CreateLink} 0 75 100% 12 "http://sourceforge.net/projects/mingw/files/Installer/mingw-get-inst/"
+  ${NSD_CreateLink} 0 115 100% 12 "MinGW tdm-gcc-4.8.1"
   Pop $Label
   ${NSD_OnClick} $Label onClickMinGWLink
-  ${NSD_CreateLabel}  0 100 100% 20 "use it to download and install required GCC (C,C++) compilers."
-  ${NSD_CreateLink}   0 120 100% 30 "Refer BUSMASTER Help file MinGW section for detailed information."
+  ${NSD_CreateLabel}  0 140 100% 20 "use it to download and install required GCC (C,C++) compilers."
+  ${NSD_CreateLink}   0 160 100% 30 "Refer BUSMASTER Help file MinGW section for detailed information."
   Pop $Label
   ${NSD_OnClick} $Label onClickBMHelpLink
 
-FinishedShow:
+
   nsDialogs::Show
 FunctionEnd
 
@@ -255,7 +264,7 @@ Function UpdateIcsneo40
   ; compare versions
 icsneo40_upgrade:
   GetDLLVersion "$SYSDIR\icsneo40.dll" $R0 $R1
-  GetDLLVersionLocal "..\Sources\BIN\Release\icsneo40.dll" $R2 $R3
+  GetDLLVersionLocal "..\Sources\BUSMASTER\BIN\Release\icsneo40.dll" $R2 $R3
   IntCmpU $R0 $R2 +1 icsneo40_install icsneo40_done ; compare major version
   IntCmpU $R1 $R3 +1 icsneo40_install icsneo40_done ; compare minor version
   Goto icsneo40_done
@@ -263,10 +272,12 @@ icsneo40_upgrade:
   ; install file
 icsneo40_install:
   SetOutPath $SYSDIR
-  File ..\Sources\BIN\Release\icsneo40.dll
+  File ..\Sources\BUSMASTER\BIN\Release\icsneo40.dll
 
 icsneo40_done:
 FunctionEnd
+
+
 
 ; Checks for the version if it is already installed
 Function CheckVersion
@@ -302,9 +313,12 @@ FunctionEnd
 Page Custom information
 !insertmacro MUI_PAGE_FINISH
 
+!define MUI_PAGE_CUSTOMFUNCTION_PRE un.ComponentsPage_Pre
+!define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.ComponentsPage_Leave
+
+!insertmacro MUI_UNPAGE_COMPONENTS
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
-
 !insertmacro MUI_LANGUAGE English
 
 ; Installation Types
@@ -320,6 +334,19 @@ Section "BUSMASTER"
   SetOutPath $INSTDIR
 
   ; If the file exists delete it before installing
+  
+  ;DBCache
+  ReadEnvStr $R7 "ALLUSERSPROFILE"
+  StrCpy $1 "\BUSMASTER\General\DBCache"
+  StrCpy $R7 $R7$1
+  RMDir /r  "$R7"
+  
+  ; Kernel
+  Delete "$INSTDIR\BusmasterKernel.dll"
+  
+  ; Driver Interface
+  Delete "$INSTDIR\BusmasterDriverInterface.dll"
+  
   Delete "$INSTDIR\BusEmulation.exe"
   Delete "$INSTDIR\BUSMASTER.exe"
   Delete "$INSTDIR\BUSMASTER.exe.manifest"
@@ -337,7 +364,6 @@ Section "BUSMASTER"
   Delete "$INSTDIR\LIN_ETAS_BOA.dll"
   Delete "$INSTDIR\LIN_Kvaser.dll"
   Delete "$INSTDIR\linlib.dll"
-  Delete "$INSTDIR\TXWindowFlexRay.dll"
   Delete "$INSTDIR\LIN_Vector_XL.dll"
   Delete "$INSTDIR\LIN_PEAK_USB.dll"
   Delete "$INSTDIR\CAN_ICS_neoVI.dll"
@@ -357,9 +383,11 @@ Section "BUSMASTER"
   Delete "$INSTDIR\UDS_Protocol.dll"
   Delete "$INSTDIR\Filter.dll"
   Delete "$INSTDIR\FrameProcessor.dll"
+  Delete "$INSTDIR\GCCDLLMakeTemplate"
   Delete "$INSTDIR\GCCDLLMakeTemplate_CAN"
   Delete "$INSTDIR\GCCDLLMakeTemplate_J1939"
   Delete "$INSTDIR\GCCDLLMakeTemplate_LIN"
+  Delete "$INSTDIR\GCCDLLMakeTemplate_FlexRay"
   Delete "$INSTDIR\mhsbmcfg.dll"
   Delete "$INSTDIR\NodeSimEx.dll"
   Delete "$INSTDIR\ProjectConfiguration.dll"
@@ -367,19 +395,22 @@ Section "BUSMASTER"
   Delete "$INSTDIR\Replay.dll"
   Delete "$INSTDIR\SignalWatch.dll"
   Delete "$INSTDIR\TestSetupEditorGUI.dll"
+  Delete "$INSTDIR\TestSetupEditorGUI.exe"
   Delete "$INSTDIR\TestSuiteExecutorGUI.dll"
   Delete "$INSTDIR\TXWindow.dll"
   Delete "$INSTDIR\FormatConverter.exe"
   Delete "$INSTDIR\SigGrphWnd.dll"
   Delete "$INSTDIR\SignalDefiner.dll"
-  RMDir /r "$INSTDIR\ConverterPlugins"
+  ;RMDir /r "$INSTDIR\ConverterPlugins"
   Delete "$INSTDIR\BUSMASTER.chm"
   Delete "$INSTDIR\LDFEditor.chm"
   Delete "$INSTDIR\COPYING.LESSER.txt"
   Delete "$INSTDIR\COPYING.txt"
   Delete "$INSTDIR\FTL.txt"
+  Delete "$INSTDIR\ReleaseNotes.txt"
   RMDir /r "$INSTDIR\SimulatedSystems"
   Delete "$INSTDIR\Readme.txt"
+  Delete "$INSTDIR\DBManager_License.txt"
   Delete "$INSTDIR\DMGraph.dll"
   Delete "$INSTDIR\ETASneo40.dll"
   Delete "$INSTDIR\icsneo40.dll"
@@ -425,92 +456,136 @@ Section "BUSMASTER"
   Delete "$INSTDIR\qtiff.dll"
   Delete "$INSTDIR\qwbmp.dll"
   Delete "$INSTDIR\qwebp.dll"
+  Delete "$INSTDIR\Application.version"
+  
+  
+  Delete "$INSTDIR\ConverterPlugins\AscLogConverter.dll"
+  Delete "$INSTDIR\ConverterPlugins\BlfLibrary.dll"
+  Delete "$INSTDIR\ConverterPlugins\BlfLogConverter.dll"
+  Delete "$INSTDIR\ConverterPlugins\CAPL2CConverter.dll"
+  Delete "$INSTDIR\ConverterPlugins\CAPL2CConverterJPN.dll"
+  Delete "$INSTDIR\ConverterPlugins\DBC2DBFConverter.dll"
+  Delete "$INSTDIR\ConverterPlugins\DBC2DBFConverterLibrary.dll"
+  Delete "$INSTDIR\ConverterPlugins\DBF2DBCConverter.dll"
+  Delete "$INSTDIR\ConverterPlugins\intl.dll"
+  Delete "$INSTDIR\ConverterPlugins\J1939DBC2DBFConverter.dll"
+  Delete "$INSTDIR\ConverterPlugins\libxml2.dll"
+  Delete "$INSTDIR\ConverterPlugins\LogAscConverter.dll"
+  Delete "$INSTDIR\ConverterPlugins\LogToExcelConverter.dll"
+  Delete "$INSTDIR\ConverterPlugins\LogToExcelConverterJPN.dll"
+  Delete "$INSTDIR\ConverterPlugins\zlib1.dll"
+  
+  ; Delete schema file
+  Delete "$INSTDIR\BusMasterPluginSchema.xsd"
+  
+  
+  ; Kernel
+  File ..\Sources\BUSMASTER\BIN\Release\BusmasterKernel.dll
+  
+  ; Driver Interface
+  File ..\Sources\BUSMASTER\BIN\Release\BusmasterDriverInterface.dll
 
   ; BUSMASTER
-  File ..\Sources\BIN\Release\BusEmulation.exe
-  File ..\Sources\BIN\Release\BUSMASTER.exe
-  File ..\Sources\BIN\Release\BUSMASTER.exe.manifest
-  File ..\Sources\Application\BUSMASTER.tlb
-  File ..\Sources\Application\BUSMASTER_Interface.c
-  File ..\Sources\Application\BUSMASTER_Interface.h
-  File ..\Sources\BIN\Release\CAN_STUB.dll
-  File ..\Sources\BIN\Release\Changelog.txt
-  File ..\Sources\BIN\Release\DIL_Interface.dll
-  File ..\Sources\BIN\Release\DIL_J1939.dll
-  File ..\Sources\BIN\Release\UDS_Protocol.dll
-  File ..\Sources\BIN\Release\Filter.dll
-  File ..\Sources\BIN\Release\FrameProcessor.dll
-  File ..\Sources\BIN\Release\mhsbmcfg.dll
-  File ..\Sources\BIN\Release\NodeSimEx.dll
-  File ..\Sources\BIN\Release\ProjectConfiguration.dll
-  File ..\Sources\BIN\Release\PSDI_CAN.dll
-  File ..\Sources\BIN\Release\Replay.dll
-  File ..\Sources\BIN\Release\SignalWatch.dll
-  File ..\Sources\BIN\Release\TestSetupEditorGUI.dll
-  File ..\Sources\BIN\Release\TestSuiteExecutorGUI.dll
-  File ..\Sources\BIN\Release\TXWindow.dll
-  File ..\Sources\BIN\Release\FormatConverter.exe
-  File ..\Sources\BIN\Release\SigGrphWnd.dll
-  File ..\Sources\BIN\Release\SignalDefiner.dll
-  File ..\Sources\BIN\Release\iconv.dll
-  File ..\Sources\BIN\Release\libxml2.dll
-  File ..\Sources\BIN\Release\zlib1.dll
-  File ..\Sources\BIN\Release\intl.dll
-  File ..\Sources\BIN\Release\LIN_ISOLAR_EVE_VLIN.dll
-  File ..\Sources\BIN\Release\FLEXRAY_ETAS_BOA_1_4.dll
-  File ..\Sources\BIN\Release\FLEXRAY_ETAS_BOA_1_5.dll
-  File ..\Sources\BIN\Release\FLEXRAY_ETAS_BOA_2.dll
-  File ..\Sources\BIN\Release\FlexRay_GIGATRONIK_flex-i.dll
-  File ..\Sources\BIN\Release\LIN_ETAS_BOA.dll
-  File ..\Sources\BIN\Release\LIN_Kvaser.dll
-  File ..\Sources\BIN\Release\linlib.dll
-  File ..\Sources\BIN\Release\TXWindowFlexRay.dll
-  File ..\Sources\BIN\Release\Controller_0.dll
-  File ..\Sources\BIN\Release\Controller_1.dll
-  File ..\Sources\BIN\Release\LIN_Vector_XL.dll
-  File ..\Sources\BIN\Release\LIN_PEAK_USB.dll
-  File ..\Sources\BIN\Release\LDFEditor.exe
-  File ..\Sources\BIN\Release\LDFViewer.exe
-  File ..\Sources\BIN\Release\DBManager.dll
-  File ..\Sources\BIN\Release\icudt52.dll
-  File ..\Sources\BIN\Release\icuin52.dll
-  File ..\Sources\BIN\Release\icuuc52.dll
-  File ..\Sources\BIN\Release\qdds.dll
-  File ..\Sources\BIN\Release\qgif.dll
-  File ..\Sources\BIN\Release\qicns.dll
-  File ..\Sources\BIN\Release\qico.dll
-  File ..\Sources\BIN\Release\qjp2.dll
-  File ..\Sources\BIN\Release\qjpeg.dll
-  File ..\Sources\BIN\Release\qminimal.dll
-  File ..\Sources\BIN\Release\qmng.dll
-  File ..\Sources\BIN\Release\qoffscreen.dll
-  File ..\Sources\BIN\Release\qsvg.dll
-  File ..\Sources\BIN\Release\Qt5Core.dll
-  File ..\Sources\BIN\Release\Qt5Gui.dll
-  File ..\Sources\BIN\Release\Qt5Widgets.dll
-  File ..\Sources\BIN\Release\qtaccessiblewidgets.dll
-  File ..\Sources\BIN\Release\qtga.dll
-  File ..\Sources\BIN\Release\qtiff.dll
-  File ..\Sources\BIN\Release\qwbmp.dll
-  File ..\Sources\BIN\Release\qwebp.dll
+  File ..\Sources\BUSMASTER\BIN\Release\BusEmulation.exe
+  File ..\Sources\BUSMASTER\BIN\Release\BUSMASTER.exe
+  File ..\Sources\BUSMASTER\BIN\Release\BUSMASTER.exe.manifest
+  File ..\Sources\BUSMASTER\Application\BUSMASTER.tlb
+  File ..\Sources\BUSMASTER\Application\BUSMASTER_Interface.c
+  File ..\Sources\BUSMASTER\Application\BUSMASTER_Interface.h
+  File ..\Sources\BUSMASTER\BIN\Release\CAN_STUB.dll
+  File ..\Sources\BUSMASTER\BIN\Release\Changelog.txt
+  File ..\Sources\BUSMASTER\BIN\Release\DIL_J1939.dll
+  File ..\Sources\BUSMASTER\BIN\Release\UDS_Protocol.dll
+  File ..\Sources\BUSMASTER\BIN\Release\Filter.dll
+  File ..\Sources\BUSMASTER\BIN\Release\FrameProcessor.dll
+  File ..\Sources\BUSMASTER\BIN\Release\mhsbmcfg.dll
+  File ..\Sources\BUSMASTER\BIN\Release\NodeSimEx.dll
+  File ..\Sources\BUSMASTER\BIN\Release\ProjectConfiguration.dll
+  File ..\Sources\BUSMASTER\BIN\Release\PSDI_CAN.dll
+  File ..\Sources\BUSMASTER\BIN\Release\Replay.dll
+  File ..\Sources\BUSMASTER\BIN\Release\SignalWatch.dll
+  File ..\Sources\BUSMASTER\BIN\Release\TestSetupEditorGUI.exe
+  File ..\Sources\BUSMASTER\BIN\Release\TestSuiteExecutorGUI.dll
+  File ..\Sources\BUSMASTER\BIN\Release\TXWindow.dll
+  File ..\Sources\BUSMASTER\BIN\Release\FormatConverter.exe
+  File ..\Sources\BUSMASTER\BIN\Release\SigGrphWnd.dll
+  File ..\Sources\BUSMASTER\BIN\Release\SignalDefiner.dll
+  ;File ..\Sources\BUSMASTER\BIN\Release\iconv.dll
+  File ..\Sources\BUSMASTER\BIN\Release\libxml2.dll
+  File ..\Sources\BUSMASTER\BIN\Release\zlib1.dll
+  File ..\Sources\BUSMASTER\BIN\Release\intl.dll
+  File ..\Sources\BUSMASTER\BIN\Release\LIN_ISOLAR_EVE_VLIN.dll
+  File ..\Sources\BUSMASTER\BIN\Release\LIN_ETAS_BOA.dll
+  File ..\Sources\BUSMASTER\BIN\Release\LIN_Kvaser.dll
+  File ..\Sources\BUSMASTER\BIN\Release\linlib.dll
+  File ..\Sources\BUSMASTER\BIN\Release\Controller_0.dll
+  File ..\Sources\BUSMASTER\BIN\Release\Controller_1.dll
+  File ..\Sources\BUSMASTER\BIN\Release\LIN_Vector_XL.dll
+  File ..\Sources\BUSMASTER\BIN\Release\LIN_PEAK_USB.dll
+  File ..\Sources\BUSMASTER\BIN\Release\LDFEditor.exe
+  File ..\Sources\BUSMASTER\BIN\Release\LDFViewer.exe
+  File ..\Sources\BUSMASTER\BIN\Release\DBManager.dll
+  File ..\Sources\BUSMASTER\BIN\Release\icudt52.dll
+  File ..\Sources\BUSMASTER\BIN\Release\icuin52.dll
+  File ..\Sources\BUSMASTER\BIN\Release\icuuc52.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qdds.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qgif.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qicns.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qico.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qjp2.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qjpeg.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qminimal.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qmng.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qoffscreen.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qsvg.dll
+  File ..\Sources\BUSMASTER\BIN\Release\Qt5Core.dll
+  File ..\Sources\BUSMASTER\BIN\Release\Qt5Gui.dll
+  File ..\Sources\BUSMASTER\BIN\Release\Qt5Widgets.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qtaccessiblewidgets.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qtga.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qtiff.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qwbmp.dll
+  File ..\Sources\BUSMASTER\BIN\Release\qwebp.dll
+  File ..\Sources\BUSMASTER\BIN\Release\Application.version
 
+  ; PlugIn schema file
+  File ..\Sources\BUSMASTER\BusMasterPluginSchema.xsd
+  
   ; Converters
-  File /r ..\Sources\BIN\Release\ConverterPlugins
+  ;File /r ..\Sources\BUSMASTER\BIN\Release\ConverterPlugins
+  SetOutPath "$INSTDIR\ConverterPlugins"
+  File ..\Sources\BUSMASTER\BIN\Release\ConverterPlugins\AscLogConverter.dll
+  File ..\Sources\BUSMASTER\BIN\Release\ConverterPlugins\BlfLibrary.dll
+  File ..\Sources\BUSMASTER\BIN\Release\ConverterPlugins\BlfLogConverter.dll
+  File ..\Sources\BUSMASTER\BIN\Release\ConverterPlugins\CAPL2CConverter.dll
+  ;File ..\Sources\BUSMASTER\BIN\Release\ConverterPlugins\CAPL2CConverterJPN.dll
+  File ..\Sources\BUSMASTER\BIN\Release\ConverterPlugins\DBC2DBFConverter.dll
+  File ..\Sources\BUSMASTER\BIN\Release\ConverterPlugins\DBC2DBFConverterLibrary.dll
+  File ..\Sources\BUSMASTER\BIN\Release\ConverterPlugins\DBF2DBCConverter.dll
+  File ..\Sources\BUSMASTER\BIN\Release\intl.dll
+  File ..\Sources\BUSMASTER\BIN\Release\ConverterPlugins\J1939DBC2DBFConverter.dll
+  File ..\Sources\BUSMASTER\BIN\Release\libxml2.dll
+  File ..\Sources\BUSMASTER\BIN\Release\ConverterPlugins\LogAscConverter.dll
+  File ..\Sources\BUSMASTER\BIN\Release\ConverterPlugins\LogToExcelConverter.dll
+  ;File ..\Sources\BUSMASTER\BIN\Release\ConverterPlugins\LogToExcelConverterJPN.dll
+  File ..\Sources\BUSMASTER\BIN\Release\zlib1.dll
 
+  SetOutPath $INSTDIR
   ; Japanese lib files
-  File /r ..\Sources\BIN\Release\JPN
+  ;File /r ..\Sources\BUSMASTER\BIN\Release\JPN
 
   ; Japanese Localization folder
-  File /r ..\Sources\Localization
+  ;File /r ..\Sources\BUSMASTER\Localization
 
   ; Help
-  File /oname=BUSMASTER.chm "..\Documents\4 Help_new\out\help.chm"
-
+  ;File /oname=BUSMASTER.chm "..\Documents\4 Help\out\help.chm"
+  File ..\Sources\BUSMASTER\BIN\Release\BUSMASTER.chm
+  
   ; LDF Editor Help
-  File /oname=LDFEditor.chm "..\Documents\4 Help_new\out\ldfeditor.chm"
+  File /oname=LDFEditor.chm "..\Documents\4 Help\out\ldfeditor.chm"
   
   ; Oxygen icons resource Dll
-  File ..\Sources\BIN\Release\AdvancedUIPlugIn.dll
+  File ..\Sources\BUSMASTER\BIN\Release\AdvancedUIPlugIn.dll
 
   ; License
   File ..\COPYING.LESSER.txt
@@ -519,51 +594,72 @@ Section "BUSMASTER"
 
   ; Readme
   File ..\Readme.txt
+  File ..\DBManager_License.txt
+  File ..\ReleaseNotes.txt
   
-  File /r ..\Sources\BIN\Release\platforms
+  File /r ..\Sources\BUSMASTER\BIN\Release\platforms
 
+  ;Add dlls to ConverterPlugins
+  SetOutPath "$INSTDIR\ConverterPlugins"
+  ;File ..\Sources\BUSMASTER\BIN\Release\iconv.dll
+  File ..\Sources\BUSMASTER\BIN\Release\intl.dll
+  File ..\Sources\BUSMASTER\BIN\Release\libxml2.dll
+  File ..\Sources\BUSMASTER\BIN\Release\zlib1.dll
+	
   ; Simulated Systems Include files
   SetOutPath "$INSTDIR\SimulatedSystems\include\"
-  File ..\Sources\Application\SimulatedSystems\include\CANIncludes.h
-  File ..\Sources\Application\SimulatedSystems\include\LINIncludes.h
-  File ..\Sources\Application\SimulatedSystems\include\CAPLWrapper.h
-  File ..\Sources\Application\SimulatedSystems\include\CANCAPLWrapper.h
-  File ..\Sources\Application\SimulatedSystems\include\Common.h
-  File ..\Sources\Application\SimulatedSystems\include\Wrapper_Common.h
-  File ..\Sources\Application\SimulatedSystems\include\Wrapper_CAN.h
-  File ..\Sources\Application\SimulatedSystems\include\Wrapper_LIN.h
-  File ..\Sources\Application\SimulatedSystems\include\Wrapper_J1939.h
-  File ..\Sources\Application\SimulatedSystems\include\J1939Includes.h
-
+  
+  ; Common Files
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\include\BMSignal.h
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\include\BMUtility.h
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\include\Common.h
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\include\Wrapper_Common.h
+  
+  ; CAN Related 
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\include\CANIncludes.h
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\include\BMCANDefines.h
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\include\CANCAPLWrapper.h
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\include\CAPLWrapper.h
+  
+  ; J1939 Related
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\include\J1939Includes.h
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\include\BMJ1939Defines.h
+  
+  ; LIN Related
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\include\LINIncludes.h
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\include\BMLINDefines.h
+  
   ; Simulated Systems Library files
   SetOutPath "$INSTDIR\SimulatedSystems\OBJ\"
-  File ..\Sources\Application\SimulatedSystems\OBJ\libWrapper_CAN.a
-  File ..\Sources\Application\SimulatedSystems\OBJ\libWrapper_LIN.a
-  File ..\Sources\Application\SimulatedSystems\OBJ\libWrapper_J1939.a
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\OBJ\libWrapper_CAN.a
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\OBJ\libWrapper_LIN.a
+  File ..\Sources\BUSMASTER\Application\SimulatedSystems\OBJ\libWrapper_J1939.a
 
   ; GCC Make Files
   SetOutPath $INSTDIR
-  File ..\Sources\Application\GCCDLLMakeTemplate_CAN
-  File ..\Sources\Application\GCCDLLMakeTemplate_LIN
-  File ..\Sources\Application\GCCDLLMakeTemplate_J1939
+  File ..\Sources\BUSMASTER\Application\GCCDLLMakeTemplate
+  
 
   ; Check if Visual Studio 2012 redistributable is already installed
-  ReadRegStr $1 HKLM "Software\Microsoft\DevDiv\vc\Servicing\11.0\RuntimeMinimum" Install
-  StrCmp $1 "1" NoInstall Install
+  ;ReadRegStr $1 HKLM "Software\Microsoft\DevDiv\vc\Servicing\11.0\RuntimeMinimum" Install
+  ;StrCmp $1 "1" NoInstall Install
 
-Install:
-  ; Install Visual Studio 2012 Redistributable
-  File "..\Tools\VC++ 2012 Redistributable\vcredist_x86.exe"
+;Install:
+  ; Install Visual Studio 2013 Redistributable
+  File "..\Tools\VC++ 2013 Redistributable\vcredist_x86.exe"
   ExecWait '"vcredist_x86.exe" /s /v" /qn"'
   Delete "$INSTDIR\vcredist_x86.exe"
 
-NoInstall:
+;NoInstall:
 
   ; create desktop shortcut
   CreateShortCut "$DESKTOP\BUSMASTER v${VERSION}.lnk" "$INSTDIR\BUSMASTER.exe" ""
 
   ; Registry entries for uninstaller
   WriteRegStr HKLM "Software\BUSMASTER_v${VERSION}" "Install_Dir" "$INSTDIR"
+  WriteRegStr HKLM "Software\BUSMASTER_v${VERSION}" "Flexray_Key" "${Flexray_Key}"
+  WriteRegStr HKLM "Software\BUSMASTER_v${VERSION}" "Instruments_Key" "${Instruments_Key}"
+  WriteRegStr HKLM "Software\BUSMASTER_v${VERSION}" "CANFD_Key" "${CANFD_Key}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\BUSMASTER_v${VERSION}" "DisplayName" "BUSMASTER Ver ${VERSION}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\BUSMASTER_v${VERSION}" "UninstallString" "$INSTDIR\uninst.exe"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\BUSMASTER_v${VERSION}" "InstallLocation " "$INSTDIR\"
@@ -579,9 +675,9 @@ NoInstall:
   ; Compatibility settings for Windows 7
   ReadRegStr $1 HKLM "SOFTWARE\Microsoft\Windows NT\CurrentVersion" CurrentVersion
   StrCmp $1 "6.1" 0 lbl ;StrCmp str1 str2 jump_if_equal [jump_if_not_equal]
-  WriteRegStr HKCU "Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" "$INSTDIR\BUSEmulation.exe" "WINXPSP3"
-  WriteRegStr HKCU "Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" "$INSTDIR\FormatConverter.exe" "WINXPSP3"
-  WriteRegStr HKCU "Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" "$INSTDIR\BUSMASTER.exe" "RUNASADMIN"
+  ; WriteRegStr HKCU "Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" "$INSTDIR\BUSEmulation.exe" "WINXPSP3"
+  ; WriteRegStr HKCU "Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" "$INSTDIR\FormatConverter.exe" "WINXPSP3"
+  ; WriteRegStr HKCU "Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" "$INSTDIR\BUSMASTER.exe" "RUNASADMIN"
 
 lbl:
 
@@ -591,6 +687,9 @@ lbl:
 
   SetShellVarContext all
 
+  ; Uninstaller
+  WriteUninstaller "uninst.exe"	
+  
   ; Start menu entries
   CreateDirectory "$SMPROGRAMS\BUSMASTER v${VERSION}"
   CreateShortCut "$SMPROGRAMS\BUSMASTER v${VERSION}\BUSMASTER v${VERSION}.lnk" "$INSTDIR\BUSMASTER.exe" "" "$INSTDIR\BUSMASTER.exe" 0
@@ -600,14 +699,12 @@ lbl:
   CreateShortCut "$SMPROGRAMS\BUSMASTER v${VERSION}\Tools\LIN Database Editor.lnk" "$INSTDIR\LDFEditor.exe" "" "$INSTDIR\LDFEditor.exe" 0
   CreateShortCut "$SMPROGRAMS\BUSMASTER v${VERSION}\Tools\Format Converter.lnk" "$INSTDIR\FormatConverter.exe" "" "$INSTDIR\FormatConverter.exe" 0
 
-  ; Uninstaller
-  WriteUninstaller "uninst.exe"
 SectionEnd
 
 Section "DMGraph"
     SectionIn RO 1 2 3
     SetOutPath $INSTDIR
-    File ..\Sources\BIN\ReleaseUMinSize\DMGraph.dll
+    File ..\Sources\BUSMASTER\BIN\ReleaseUMinSize\DMGraph.dll
 SectionEnd
 
 SectionGroupEnd
@@ -617,82 +714,82 @@ SectionGroup "Hardware Interfaces"
 Section "ETAS ES581"
   SectionIn 1 2
   SetOutPath $INSTDIR
-  File ..\Sources\BIN\Release\CAN_ICS_neoVI.dll
+  File ..\Sources\BUSMASTER\BIN\Release\CAN_ICS_neoVI.dll
   Call UpdateIcsneo40
 SectionEnd
 
 Section "ETAS BOA"
   SectionIn 1 2
   SetOutPath $INSTDIR
-  File ..\Sources\BIN\Release\CAN_ETAS_BOA_1_4.dll
-  File ..\Sources\BIN\Release\CAN_ETAS_BOA_1_5.dll
-  File ..\Sources\BIN\Release\CAN_ETAS_BOA_2.dll
+  File ..\Sources\BUSMASTER\BIN\Release\CAN_ETAS_BOA_1_4.dll
+  File ..\Sources\BUSMASTER\BIN\Release\CAN_ETAS_BOA_1_5.dll
+  File ..\Sources\BUSMASTER\BIN\Release\CAN_ETAS_BOA_2.dll
 SectionEnd
 
 Section "Intrepid neoVI"
   SectionIn 1 2
   SetOutPath $INSTDIR
-  File ..\Sources\BIN\Release\CAN_ICS_neoVI.dll
+  File ..\Sources\BUSMASTER\BIN\Release\CAN_ICS_neoVI.dll
   Call UpdateIcsneo40
 SectionEnd
 
 Section "Kvaser CAN"
   SectionIn 1 2
   SetOutPath $INSTDIR
-  File ..\Sources\BIN\Release\CAN_Kvaser_CAN.dll
-  ; File ..\Sources\BIN\Release\canlib32.dll
+  File ..\Sources\BUSMASTER\BIN\Release\CAN_Kvaser_CAN.dll
+  ; File ..\Sources\BUSMASTER\BIN\Release\canlib32.dll
 SectionEnd
 
 Section "MHS-Elektronik Tiny-CAN"
   SectionIn 1 2
   SetOutPath $INSTDIR
-  File ..\Sources\BIN\Release\CAN_MHS.dll
-  File ..\Sources\CAN_MHS\EXTERNAL\mhstcan.dll
+  File ..\Sources\BUSMASTER\BIN\Release\CAN_MHS.dll
+  File ..\Sources\BUSMASTER\CAN_MHS\EXTERNAL\mhstcan.dll
 SectionEnd
 
 Section "Peak USB"
   SectionIn 1 2
   SetOutPath $INSTDIR
-  File ..\Sources\BIN\Release\CAN_PEAK_USB.dll
-  File ..\Sources\BIN\Release\CanApi2.dll
+  File ..\Sources\BUSMASTER\BIN\Release\CAN_PEAK_USB.dll
+  File ..\Sources\BUSMASTER\BIN\Release\CanApi2.dll
 SectionEnd
 
 Section "Vector XL"
   SectionIn 1 2
   SetOutPath $INSTDIR
-  File ..\Sources\BIN\Release\CAN_Vector_XL.dll
-  File ..\Sources\BIN\Release\vxlapi.dll
+  File ..\Sources\BUSMASTER\BIN\Release\CAN_Vector_XL.dll
+  File ..\Sources\BUSMASTER\BIN\Release\vxlapi.dll
 SectionEnd
 
 Section "IXXAT VCI"
   SectionIn 1 2
   SetOutPath $INSTDIR
-  File ..\Sources\BIN\Release\CAN_IXXAT_VCI.dll
+  File ..\Sources\BUSMASTER\BIN\Release\CAN_IXXAT_VCI.dll
 SectionEnd
 
 Section "Vision Systems GmbH VSCAN API"
   SectionIn 1 2
   SetOutPath $INSTDIR
-  File ..\Sources\BIN\Release\CAN_VSCOM.dll
-  File ..\Sources\BIN\Release\vs_can_api.dll
+  File ..\Sources\BUSMASTER\BIN\Release\CAN_VSCOM.dll
+  File ..\Sources\BUSMASTER\BIN\Release\vs_can_api.dll
 SectionEnd
 
 Section "ETAS ISOLAR-CAN"
     SectionIn 1 2
     SetOutPath $INSTDIR
-    File ..\Sources\BIN\Release\CAN_ISOLAR_EVE_VCAN.dll
+    File ..\Sources\BUSMASTER\BIN\Release\CAN_ISOLAR_EVE_VCAN.dll
 SectionEnd
 
 Section "SPX DS API"
   SectionIn 1 2
   SetOutPath $INSTDIR
-  File ..\Sources\BIN\Release\CAN_i-VIEW.dll
+  File ..\Sources\BUSMASTER\BIN\Release\CAN_i-VIEW.dll
 SectionEnd
 
 Section "NSI API"
   SectionIn 1 2
   SetOutPath $INSTDIR
-  File ..\Sources\BIN\Release\CAN_NSI.dll
+  File ..\Sources\BUSMASTER\BIN\Release\CAN_NSI.dll
 SectionEnd
 
 SectionGroupEnd
@@ -714,7 +811,6 @@ Section "COM Examples"
   SetOutPath "$INSTDIR\Examples\COM\"
   File ..\Examples\COM\VC++COM_Client.zip
 SectionEnd
-
 Section "Test Automation"
   SectionIn 1 2
   SetOutPath "$INSTDIR\Examples\TestAutomation\"
@@ -725,13 +821,26 @@ SectionEnd
 
 SectionGroupEnd
 
+Function un.onInit
+StrCpy $COMP_PAGE_INIT "1"
+StrCpy $DeleteLicenseFiles "0"
+StrCpy $COMP_FLEXRAY "0"
+StrCpy $COMP_Instruments "0"
+StrCpy $COMP_ADD_ONS "0"
+FunctionEnd
+
 ; Uninstall section here...
-Section "Uninstall"
+Section un.BUSMASTER Uninstall 
+  
+  IntOp $COMP_BM $COMP_BM & ${SF_SELECTED}
+   ${If} $COMP_BM != "0"
  ; Prompt user to close all instances of BUSMASTER.
+  ${Do}
   ${nsProcess::FindProcess} "BUSMASTER.exe" $R0
   ${If} $R0 == 0
   MessageBox MB_OK|MB_ICONSTOP "Please close all instances of BUSMASTER and Click 'OK'"
   ${EndIf}
+  ${LoopUntil} $R0 != 0
   
   ; Kill process BusEmulation if active.
   ${Do}
@@ -740,6 +849,9 @@ Section "Uninstall"
   
   ; Unregister server
   SetOutPath $INSTDIR
+  
+  
+    
   ExecWait 'BusEmulation.exe /unregserver'
   ExecWait 'BUSMASTER.exe /unregserver'
 
@@ -763,9 +875,9 @@ Section "Uninstall"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\BUSMASTER_v${VERSION}"
 
   ; Compatibility settings
-  DeleteRegValue HKCU "Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" "$INSTDIR\BUSMASTER.exe"
-  DeleteRegValue HKCU "Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" "$INSTDIR\BUSEmulation.exe"
-  DeleteRegValue HKCU "Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" "$INSTDIR\FormatConverter.exe"
+  ; DeleteRegValue HKCU "Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" "$INSTDIR\BUSMASTER.exe"
+  ; DeleteRegValue HKCU "Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" "$INSTDIR\BUSEmulation.exe"
+  ; DeleteRegValue HKCU "Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" "$INSTDIR\FormatConverter.exe"
 
   ; Delete installation folder
   SetOutPath "$TEMP"
@@ -787,7 +899,227 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\BUSMASTER v${VERSION}\Tools\Format Converter.lnk"
   
   RMDir /r "$SMPROGRAMS\BUSMASTER v${VERSION}\Tools"
-
+  
   ; Deleting If StartPrograms BUSMASTER dir exists
-  RMDir /r "$SMPROGRAMS\BUSMASTER v${VERSION}"
+  RMDir /r "$SMPROGRAMS\BUSMASTER v${VERSION}" 
+  ${EndIf}
+  
 SectionEnd
+
+SectionGroup "un.AddOns" Section_AddOns
+Section /o un.FlexRay Section_FlexRay
+
+IntOp $COMP_FLEXRAY $COMP_FLEXRAY & ${SF_SELECTED}
+${if} $COMP_FLEXRAY == "1"
+
+  ; Prompt user to close all instances of BUSMASTER.
+  ${Do}
+  ${nsProcess::FindProcess} "BUSMASTER.exe" $R0
+  ${If} $R0 == 0
+  MessageBox MB_OK|MB_ICONSTOP "Please close all instances of BUSMASTER and Click 'OK'"
+  ${EndIf}
+  ${LoopUntil} $R0 != 0
+  
+  ; Kill process BusEmulation if active.
+  ${Do}
+  ${nsProcess::KillProcess} "BusEmulation.exe" $R0
+  ${LoopUntil} $R0 != 0
+  
+  ; Unregister server
+  SetOutPath $INSTDIR
+  
+${If} $DeleteLicenseFiles == "1"
+  Delete "$INSTDIR\LicenseValidator.dll"
+  Delete "$INSTDIR\MacIdLicenceManager.dll"
+  ;RMDir /r "$INSTDIR\BusmasterBusPlugins"
+  ;RMDir /r "$INSTDIR\BusmasterPlugins"
+  ${EndIf}  
+  
+;ExecWait '"$PROGRAMFILES\BUSMASTER_v${VERSION}\BusmasterBusPlugins\FlexRay\uninst.exe" /S'
+ExecWait '"$INSTDIR\BusmasterBusPlugins\FlexRay\uninst.exe" /S'
+
+${EndIf}
+SectionEnd
+
+Section /o un.Instruments Section_Instruments
+
+IntOp $COMP_Instruments $COMP_Instruments & ${SF_SELECTED}
+${if} $COMP_Instruments == "1"
+   
+  ; Prompt user to close all instances of BUSMASTER.
+  ${Do}
+  ${nsProcess::FindProcess} "BUSMASTER.exe" $R0
+  ${If} $R0 == 0
+  MessageBox MB_OK|MB_ICONSTOP "Please close all instances of BUSMASTER and Click 'OK'"
+  ${EndIf}
+  ${LoopUntil} $R0 != 0
+  
+  ; Kill process BusEmulation if active.
+  ${Do}
+  ${nsProcess::KillProcess} "BusEmulation.exe" $R0
+  ${LoopUntil} $R0 != 0
+  
+  ; Unregister server
+  SetOutPath $INSTDIR
+  
+${If} $DeleteLicenseFiles == "1"
+  Delete "$INSTDIR\LicenseValidator.dll"
+  Delete "$INSTDIR\MacIdLicenceManager.dll"
+  ;RMDir /r "$INSTDIR\BusmasterBusPlugins"
+  ;RMDir /r "$INSTDIR\BusmasterPlugins"
+${EndIf}
+ExecWait '"$INSTDIR\BusmasterPlugins\InstrumentPlugin\uninst.exe" /S'
+${EndIf}
+
+SectionEnd
+
+Section /o un.CANFD Section_CANFD
+
+IntOp $COMP_CANFD $COMP_CANFD & ${SF_SELECTED}
+${if} $COMP_CANFD == "1"
+   
+  ; Prompt user to close all instances of BUSMASTER.
+  ${Do}
+  ${nsProcess::FindProcess} "BUSMASTER.exe" $R0
+  ${If} $R0 == 0
+  MessageBox MB_OK|MB_ICONSTOP "Please close all instances of BUSMASTER and Click 'OK'"
+  ${EndIf}
+  ${LoopUntil} $R0 != 0
+  
+  ; Kill process BusEmulation if active.
+  ${Do}
+  ${nsProcess::KillProcess} "BusEmulation.exe" $R0
+  ${LoopUntil} $R0 != 0
+  
+  ; Unregister server
+  SetOutPath $INSTDIR
+  
+${If} $DeleteLicenseFiles == "1"
+  Delete "$INSTDIR\LicenseValidator.dll"
+  Delete "$INSTDIR\MacIdLicenceManager.dll"
+  ;RMDir /r "$INSTDIR\BusmasterBusPlugins"
+  ;RMDir /r "$INSTDIR\BusmasterPlugins"
+${EndIf}
+ExecWait '"$INSTDIR\BusmasterBusPlugins\CANFD\uninst.exe" /S' 
+${EndIf}
+
+SectionEnd
+
+
+SectionGroupEnd
+
+LangString DESC_BUSMASTER ${ENGLISH} "Select BusMaster to uninstall BusMaster including AddOns"
+LangString DESC_AddOns ${ENGLISH} "Select AddOns to uninstall BusMaster AddOns"
+LangString DESC_AddOns_FlexRay ${ENGLISH} "Select FlexRay AddOn to uninstall only FlexRay AddOn"
+LangString DESC_AddOns_Instruments ${ENGLISH} "Select Instruments to uninstall only Instruments AddOn"
+LangString DESC_AddOns_CANFD ${ENGLISH} "Select CAN FD to uninstall only CAN FD AddOn"
+
+!insertmacro MUI_UNFUNCTION_DESCRIPTION_BEGIN
+  !insertmacro MUI_DESCRIPTION_TEXT ${Section_AddOns} $(DESC_AddOns)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Section_FlexRay} $(DESC_AddOns_FlexRay)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Section_Instruments} $(DESC_AddOns_Instruments)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Section_CANFD} $(DESC_AddOns_CANFD)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Uninstall} $(DESC_BUSMASTER)
+!insertmacro MUI_UNFUNCTION_DESCRIPTION_END
+
+Function un.ComponentsPage_Pre
+	Call un.CheckAddOnDetails
+	SectionGetFlags ${Uninstall} $R5
+FunctionEnd
+
+Function un.ComponentsPage_Leave
+SectionGetFlags ${Uninstall} $COMP_BM
+SectionGetFlags ${Section_AddOns} $COMP_ADD_ONS
+SectionGetFlags ${Section_FlexRay} $COMP_FLEXRAY
+SectionGetFlags ${Section_Instruments} $COMP_Instruments
+SectionGetFlags ${Section_CANFD} $COMP_CANFD
+
+StrCpy $COMP_PAGE_INIT "0"
+StrCpy $DeleteLicenseFiles "0"
+
+IntOp $COMP_ADD_ONS $COMP_ADD_ONS & ${SF_SELECTED}
+${If} $COMP_ADD_ONS == "1"
+StrCpy $DeleteLicenseFiles "1"
+${EndIf}
+
+FunctionEnd
+
+Function un.CheckAddOnDetails
+StrCpy $0 0
+StrCpy $COMP_ADD_ONS "0"
+StrCpy $COMP_FLEXRAY "0"
+StrCpy $COMP_Instruments "0"
+StrCpy $COMP_CANFD "0"
+loop:
+  EnumRegKey $1 HKCU "SOFTWARE\RBEI-ETAS\BUSMASTER_v${VERSION}\Add-Ons" $0
+  StrCmp $1 "" done
+  StrCpy $COMP_ADD_ONS "1"
+  ${If} $1 == "FlexRay"
+  StrCpy $COMP_FLEXRAY "1"
+  ${EndIf}
+  ${If} $1 == "Instruments"
+  StrCpy $COMP_Instruments "1"
+  ${EndIf}
+  ${If} $1 == "CANFD"
+  StrCpy $COMP_CANFD "1"
+  ${EndIf}
+  
+  ;StrCmp $1 "" disbleBM
+  IntOp $0 $0 + 1
+  goto loop
+  
+  done:   
+  ${If} $COMP_PAGE_INIT == "1"
+${If} $COMP_FLEXRAY == "0" 
+${AndIf} $COMP_Instruments == "0"
+${AndIf} $COMP_CANFD == "0"
+	SectionSetText ${Section_AddOns} ""
+	SectionSetText ${Section_FlexRay} ""
+	SectionSetText ${Section_Instruments} "" 
+	SectionSetText ${Section_CANFD} ""
+	IntOp $0 ${SF_SELECTED} | ${SF_RO}
+	SectionSetFlags ${Uninstall} $0
+${EndIf}
+${If} $COMP_FLEXRAY == "0"	
+	SectionSetText ${Section_FlexRay} ""
+${EndIf}
+${If} $COMP_Instruments == "0" 
+ SectionSetText ${Section_Instruments} "" 
+${EndIf}
+${If} $COMP_CANFD == "0" 
+ SectionSetText ${Section_CANFD} "" 
+${EndIf}
+
+${If} $COMP_ADD_ONS != "0"
+  ${AndIf} $Uninstall != "0"
+	Call un.DisableAddOns
+  ${EndIf}  
+  ${EndIf}
+	
+; Read the BUSMASTER version installed
+FunctionEnd
+
+Function un.DisableAddOns
+	IntOp $0 ${SF_SELECTED} | ${SF_RO}
+	!insertmacro SetSectionFlag ${Section_AddOns} $0	
+	!insertmacro SetSectionFlag ${Section_FlexRay} $0	
+	!insertmacro SetSectionFlag ${Section_Instruments} $0	
+	!insertmacro SetSectionFlag ${Section_CANFD} $0	
+FunctionEnd
+
+Function un.onSelChange
+SectionGetFlags ${Uninstall} $R0
+
+${If} $R5 != $R0
+${If} $R0 == ${SF_SELECTED}    
+	Call un.DisableAddOns
+${ElseIf} $R0 != ${SF_SELECTED}    
+	!insertmacro ClearSectionFlag ${Section_AddOns} ${SF_RO}
+	!insertmacro ClearSectionFlag ${Section_FlexRay} ${SF_RO}
+	!insertmacro ClearSectionFlag ${Section_Instruments} ${SF_RO}
+	!insertmacro ClearSectionFlag ${Section_CANFD} ${SF_RO}
+${EndIf}
+ SectionGetFlags ${Uninstall} $R5
+${EndIf}
+
+FunctionEnd

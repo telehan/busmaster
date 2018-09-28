@@ -89,6 +89,9 @@ If winexists($WIN_BUSMASTER) then
 	_CreateConfig("cfxj1939DB_30.cfx")																	; Create Configuration
 
 	_openJ1939DB("testJ1939DBE_30.DBF")																		; Open the DB
+	;------Maximize Child Window DatabaseEditor - J1939---------------
+	_Maximize_childWindow("DatabaseEditor - J1939")
+	sleep(1000)
 
 	ControlClick($WIN_DBEditor_J1939,"",$BTN_NewSignal_DBEditor)											; Click on 'New Signal'
 
@@ -224,6 +227,12 @@ if $Sig2=1 and $Sig3=1 and $PopUpMenu=1 and $NullSigDesc=1 Then
 Else
 	_WriteResult("Fail","TS_J1939_DBE_30")
 EndIf
+
+    _ActivatechildWindow($WIN_DBEditor_J19391)
+	WinClose($WIN_DBEditor_J19391)
+	if WinWaitActive($WIN_BUSMASTER,$saveDBtxt,2) Then
+		ControlClick($WIN_BUSMASTER,"",$BTN_No_SaveDB)
+	EndIf
 
 $isAppNotRes=_CloseApp()																				; Close the app
 

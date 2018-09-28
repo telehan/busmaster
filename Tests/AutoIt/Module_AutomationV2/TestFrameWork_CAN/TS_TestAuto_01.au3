@@ -339,16 +339,24 @@ if winexists($WIN_BUSMASTER) then
 	$TestDataPath=_TestDataPath()									 								; Fetch the test data path
 
 	$OutPutPath=_OutputDataPath()																	; Fetch the output data path
+   _CreateNewTestSetup()
 
-	WinMenuSelectItem($WIN_BUSMASTER,"",$TestAutomationFileMenu,$TestAutomationNewMenu)				; Select File->New from menu
+	WinWaitActive($Win_TestSetup_TestEditor,"",13)
 
-	WinWaitActive($Win_TestSetup_TestEditor,"",3)
+	Sleep(2000)
+	ControlFocus($Win_TestSetup_TestEditor, "", $TXT_Open_File_CAPL2CPP)
+	Sleep(2000)
 
 	ControlSend($Win_TestSetup_TestEditor,"",$Edit_FName_NewTestSetupFile,$OutPutPath&"\TestAuto_01")	; Enter the File name
 	sleep(750)
 
+	If(@OSVersion <> "WIN_7") Then
+		$BTN_Save_NewTestSetupFile = "[CLASS:Button; INSTANCE:2]"
+	EndIf
+
 	ControlClick($Win_TestSetup_TestEditor,"",$BTN_Save_NewTestSetupFile)							; Click on Save button
 	sleep(1000)
+	closeDilogBoxError($Win_TestSetup_TestEditor)
 
 	_SelectTestSetUpNode()																			; Select Test Set up node
 
@@ -384,13 +392,15 @@ if winexists($WIN_BUSMASTER) then
 
 	_ClickTestEditConfirmBTN()																		; Click on Confirm button
 
-	Send("^{F4}")																					; Close Test Editor window
+	Send("!{F4}")																					; Close Test Editor window
 	sleep(1000)
 
 	_OpenTestAutomationEditor()																		; Open Test Automation editor
-
+    _LoadTestSetupFile($OutPutPath&"\TestAuto_01")
+	sleep(1000);
 	_SelectTestSetUpNode()																			; Select Test Set up node
 
+	$LVhWnd = _GetTestEditorDetailsHWD()															; Fetch Test Editor list view handle
 	$TestSetUpItemCount=_GUICtrlListView_GetItemCount($LVhWnd)										; Fetch the item count in test setup details
 	ConsoleWrite("$TestSetUpItemCount:"&$TestSetUpItemCount&@CRLF)
 
@@ -435,7 +445,7 @@ if winexists($WIN_BUSMASTER) then
 
 	_SelectTestSetUpNode()																			; Select Test Set up node
 
-	$TVHWD= ControlGetHandle($WIN_BUSMASTER,"",$TVC_TestAuto_TestEditor)							; Fetch Test Editor tree view handle
+	$TVHWD= ControlGetHandle($WIN_TestAutomationEditorTitle,"",$TVC_TestAuto_TestEditor)							; Fetch Test Editor tree view handle
 
 	$TestSetUpNodeHWD=_GUICtrlTreeView_GetSelection($TVHWD)											; Fetch the handle of the selected node
 
@@ -514,7 +524,7 @@ if winexists($WIN_BUSMASTER) then
 
 	$CtgColWidth=_GUICtrlListView_GetColumnWidth($LVhWnd,0)											; Fetch the first coulmn width
 
-	ControlClick($WIN_BUSMASTER,"",$LVC_TestAuto_TestEditor,"Left",2,$SendItemPos[0]+$CtgColWidth+3,$SendItemPos[1])	; Double click on the "[Add Message]"
+	ControlClick($WIN_TestAutomationEditorTitle,"",$LVC_TestAuto_TestEditor,"Left",2,$SendItemPos[0]+$CtgColWidth+3,$SendItemPos[1])	; Double click on the "[Add Message]"
 	sleep(1000)
 
 	send("{DOWN 2}")																				; Select the msg
@@ -637,7 +647,7 @@ if winexists($WIN_BUSMASTER) then
 	$VerifyItemPos=_GUICtrlListView_GetItemPosition($LVhWnd, 2)										; Fetch the "[Add Message]" row position
 	$CtgColWidth=_GUICtrlListView_GetColumnWidth($LVhWnd,0)											; Fetch the first coulmn width
 
-	ControlClick($WIN_BUSMASTER,"",$LVC_TestAuto_TestEditor,"Left",2,$FailureClassPos[0]+$CtgColWidth+3,$FailureClassPos[1])	; Double click on the "Failure classification dropdown box"
+	ControlClick($WIN_TestAutomationEditorTitle,"",$LVC_TestAuto_TestEditor,"Left",2,$FailureClassPos[0]+$CtgColWidth+3,$FailureClassPos[1])	; Double click on the "Failure classification dropdown box"
 	sleep(1000)
 
 	send("{UP}")																					; Select Warning
@@ -648,12 +658,12 @@ if winexists($WIN_BUSMASTER) then
 	send("{DOWN}")																					; Select error
 	sleep(1000)
 
-	$ErrorTxt=ControlCommand ($WIN_BUSMASTER,"","","GetCurrentSelection")
+	$ErrorTxt=ControlCommand ($WIN_TestAutomationEditorTitle,"","","GetCurrentSelection")
 
 	send("{DOWN}")																					; Select Fatal
 	sleep(1000)
 
-	$FatalTxt=ControlCommand ($WIN_BUSMASTER,"","","GetCurrentSelection")
+	$FatalTxt=ControlCommand ($WIN_TestAutomationEditorTitle,"","","GetCurrentSelection")
 
 	send("{ENTER}")
 	sleep(1000)
@@ -662,7 +672,7 @@ if winexists($WIN_BUSMASTER) then
 	ConsoleWrite("$ErrorTxt:"&$ErrorTxt&@CRLF)
 	ConsoleWrite("$FatalTxt:"&$FatalTxt&@CRLF)
 
-	ControlClick($WIN_BUSMASTER,"",$LVC_TestAuto_TestEditor,"Left",2,$VerifyItemPos[0]+$CtgColWidth+3,$VerifyItemPos[1])	; Double click on the "[Add Message]"
+	ControlClick($WIN_TestAutomationEditorTitle,"",$LVC_TestAuto_TestEditor,"Left",2,$VerifyItemPos[0]+$CtgColWidth+3,$VerifyItemPos[1])	; Double click on the "[Add Message]"
 	sleep(1000)
 
 	send("{DOWN 2}")																				; Select the msg
@@ -673,15 +683,15 @@ if winexists($WIN_BUSMASTER) then
 
 	_ClickTestEditConfirmBTN()																		; Click on Confirm button
 
-	$TCNodeChildItems=ControlTreeView ($WIN_BUSMASTER,"",$TVC_TestAuto_TestEditor,"GetItemCount","#0|#0")		; fetch the no. of child items for test case node
+	$TCNodeChildItems=ControlTreeView ($WIN_TestAutomationEditorTitle,"",$TVC_TestAuto_TestEditor,"GetItemCount","#0|#0")		; fetch the no. of child items for test case node
 	sleep(500)
 
 	ConsoleWrite("$TCNodeChildItems:"&$TCNodeChildItems&@CRLF)
 
 	if $TCNodeChildItems=3 Then
-		$SendItemTxt=ControlTreeView ($WIN_BUSMASTER,"",$TVC_TestAuto_TestEditor,"GetText","#0|#0|#0")
-		$WaitItemTxt=ControlTreeView ($WIN_BUSMASTER,"",$TVC_TestAuto_TestEditor,"GetText","#0|#0|#1")
-		$VerifyItemTxt=ControlTreeView ($WIN_BUSMASTER,"",$TVC_TestAuto_TestEditor,"GetText","#0|#0|#2")
+		$SendItemTxt=ControlTreeView ($WIN_TestAutomationEditorTitle,"",$TVC_TestAuto_TestEditor,"GetText","#0|#0|#0")
+		$WaitItemTxt=ControlTreeView ($WIN_TestAutomationEditorTitle,"",$TVC_TestAuto_TestEditor,"GetText","#0|#0|#1")
+		$VerifyItemTxt=ControlTreeView ($WIN_TestAutomationEditorTitle,"",$TVC_TestAuto_TestEditor,"GetText","#0|#0|#2")
 		ConsoleWrite("$SendItemTxt:"&$SendItemTxt&@CRLF)
 		ConsoleWrite("$WaitItemTxt:"&$WaitItemTxt&@CRLF)
 		ConsoleWrite("$VerifyItemTxt:"&$VerifyItemTxt&@CRLF)
@@ -728,7 +738,7 @@ if winexists($WIN_BUSMASTER) then
 
 	$CtgColWidth=_GUICtrlListView_GetColumnWidth($LVhWnd,0)											; Fetch the first coulmn width
 
-	ControlClick($WIN_BUSMASTER,"",$LVC_TestAuto_TestEditor,"Left",2,$VerifyMsgItemPos[0]+$CtgColWidth+3,$VerifyMsgItemPos[1])	; Double click on the "Signal Unit Type"
+	ControlClick($WIN_TestAutomationEditorTitle,"",$LVC_TestAuto_TestEditor,"Left",2,$VerifyMsgItemPos[0]+$CtgColWidth+3,$VerifyMsgItemPos[1])	; Double click on the "Signal Unit Type"
 	sleep(1000)
 
 	send("{DOWN}")																					; Select the type
@@ -768,13 +778,13 @@ if winexists($WIN_BUSMASTER) then
 
 	$CtgColWidth=_GUICtrlListView_GetColumnWidth($LVhWnd,0)											; Fetch the first coulmn width
 
-	ControlClick($WIN_BUSMASTER,"",$LVC_TestAuto_TestEditor,"Left",2,$SendItemPos[0]+$CtgColWidth+3,$SendItemPos[1])	; Double click on the "[Add Message]"
+	ControlClick($WIN_TestAutomationEditorTitle,"",$LVC_TestAuto_TestEditor,"Left",2,$SendItemPos[0]+$CtgColWidth+3,$SendItemPos[1])	; Double click on the "[Add Message]"
 	sleep(1000)
 
 	send("{UP}")																					; Select Delete Msg from the dropdown list
 	sleep(1000)
 
-	$SelectedSendDropDownitem=ControlCommand ($WIN_BUSMASTER,"","","GetCurrentSelection")				; Fetch the dropdown item text
+	$SelectedSendDropDownitem=ControlCommand ($WIN_TestAutomationEditorTitle,"","","GetCurrentSelection")				; Fetch the dropdown item text
 
 	ConsoleWrite("$SelectedSendDropDownitem:"&$SelectedSendDropDownitem&@CRLF)
 
@@ -792,13 +802,13 @@ if winexists($WIN_BUSMASTER) then
 	$VerifyItemPos=_GUICtrlListView_GetItemPosition($LVhWnd, 2)										; Fetch the "[Add Message]" row position
 	$CtgColWidth=_GUICtrlListView_GetColumnWidth($LVhWnd,0)											; Fetch the first coulmn width
 
-	ControlClick($WIN_BUSMASTER,"",$LVC_TestAuto_TestEditor,"Left",2,$VerifyItemPos[0]+$CtgColWidth+3,$VerifyItemPos[1])	; Double click on the "[Add Message]"
+	ControlClick($WIN_TestAutomationEditorTitle,"",$LVC_TestAuto_TestEditor,"Left",2,$VerifyItemPos[0]+$CtgColWidth+3,$VerifyItemPos[1])	; Double click on the "[Add Message]"
 	sleep(1000)
 
 	send("{UP}")																				; Select the msg
 	sleep(1000)
 
-	$SelectedVerifyDropDownitem=ControlCommand ($WIN_BUSMASTER,"","","GetCurrentSelection")				; Fetch the dropdown item text
+	$SelectedVerifyDropDownitem=ControlCommand ($WIN_TestAutomationEditorTitle,"","","GetCurrentSelection")				; Fetch the dropdown item text
 
 	ConsoleWrite("$SelectedVerifyDropDownitem:"&$SelectedVerifyDropDownitem&@CRLF)
 
@@ -811,10 +821,10 @@ if winexists($WIN_BUSMASTER) then
 
 	_ClickTestEditConfirmBTN()																		; Click on Confirm button
 
-	$SendChildItems=ControlTreeView ($WIN_BUSMASTER,"",$TVC_TestAuto_TestEditor,"GetItemCount","#0|#0|#0")		; fetch the no. of child items in send node
+	$SendChildItems=ControlTreeView ($WIN_TestAutomationEditorTitle,"",$TVC_TestAuto_TestEditor,"GetItemCount","#0|#0|#0")		; fetch the no. of child items in send node
 	sleep(500)
 
-	$VerifyChildItems=ControlTreeView ($WIN_BUSMASTER,"",$TVC_TestAuto_TestEditor,"GetItemCount","#0|#0|#1")	; fetch the no. of child items in verify node
+	$VerifyChildItems=ControlTreeView ($WIN_TestAutomationEditorTitle,"",$TVC_TestAuto_TestEditor,"GetItemCount","#0|#0|#1")	; fetch the no. of child items in verify node
 	sleep(500)
 
 	ConsoleWrite("$SendChildItems:"&$SendChildItems&@CRLF)
@@ -822,7 +832,7 @@ if winexists($WIN_BUSMASTER) then
 
 	_SelectVerifyNode()																				; Select verify node
 
-	$TVHWD= ControlGetHandle($WIN_BUSMASTER,"",$TVC_TestAuto_TestEditor)							; Fetch Test Editor tree view handle
+	$TVHWD= ControlGetHandle($WIN_TestAutomationEditorTitle,"",$TVC_TestAuto_TestEditor)							; Fetch Test Editor tree view handle
 
 	$VerifyNodeHWD=_GUICtrlTreeView_GetSelection($TVHWD)											; Fetch the handle of the selected node
 
@@ -858,7 +868,7 @@ if winexists($WIN_BUSMASTER) then
 
 	_ClickTestEditConfirmBTN()																		; Click on Confirm button
 
-	$TCChildItems=ControlTreeView ($WIN_BUSMASTER,"",$TVC_TestAuto_TestEditor,"GetItemCount","#0|#0")	; fetch the no. of child items in test case node
+	$TCChildItems=ControlTreeView ($WIN_TestAutomationEditorTitle,"",$TVC_TestAuto_TestEditor,"GetItemCount","#0|#0")	; fetch the no. of child items in test case node
 	sleep(500)
 
 	ConsoleWrite("$TCChildItems:"&$TCChildItems&@CRLF)
@@ -875,12 +885,12 @@ if winexists($WIN_BUSMASTER) then
 
 	_ClickTestEditConfirmBTN()																		; Click on Confirm button
 
-	$TestSetUpItems=ControlTreeView ($WIN_BUSMASTER,"",$TVC_TestAuto_TestEditor,"GetItemCount","#0")	; fetch the no. of child items in test set up node
+	$TestSetUpItems=ControlTreeView ($WIN_TestAutomationEditorTitle,"",$TVC_TestAuto_TestEditor,"GetItemCount","#0")	; fetch the no. of child items in test set up node
 	sleep(500)
 
 	ConsoleWrite("$TestSetUpItems:"&$TestSetUpItems&@CRLF)
 
-	Send("^{F4}")																					; Close Test Editor window
+	Send("!{F4}")																					; Close Test Editor window
 	sleep(1000)
 
 	ConsoleWrite("$TestSetupInfo:"&$TestSetupInfo&@CRLF)
@@ -901,5 +911,10 @@ Else
 	_WriteResult("Fail","TS_TestAuto_01")
 EndIf
 
+$isAppNotRes=_CloseApp()															; Close the app
+
+if $isAppNotRes=1 Then
+	_WriteResult("Warning","TS_Log_05")
+EndIf
 ConsoleWrite("****End : TS_TestAuto_01.au3****"&@CRLF)
 ConsoleWrite(@CRLF)

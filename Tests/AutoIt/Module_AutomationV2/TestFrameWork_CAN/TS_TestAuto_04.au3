@@ -53,7 +53,7 @@ sleep(1000)
 
 WinActivate($WIN_BUSMASTER,3)
 
-local $TestExeRes=0, $MsgTransmission=0,$Count=0,$ReportHeader=0,$TestSetupInfo=0,$ResultInfo=0
+local $TestExeRes=0, $MsgTransmission=0,$Count=0,$ReportHeader=0,$TestSetupInfo=0,$ResultInfo=0,$CountWinInfo=0
 
 if winexists($WIN_BUSMASTER) then
 
@@ -61,9 +61,9 @@ if winexists($WIN_BUSMASTER) then
 
 	_OpenTestAutomationEditor()																	; Open test automation editor window
 	sleep(1000)
-
+	_LoadTestSetupFile(_TestDataPath()&"\TestAuto_04")
 	$hWnd = _GetTestEditorDetailsHWD()															; Fetch Test Editor list view handle
-	$TVHWD= ControlGetHandle($WIN_BUSMASTER,"",$TVC_TestAuto_TestEditor)						; Fetch Test Editor tree view handle
+	$TVHWD= ControlGetHandle($WIN_TestAutomationEditorTitle,"",$TVC_TestAuto_TestEditor)						; Fetch Test Editor tree view handle
 
 	_SelectTestSetUpNode()																		; Select Test Set up node
 
@@ -87,10 +87,10 @@ if winexists($WIN_BUSMASTER) then
 
 	$CtgColWidth=_GUICtrlListView_GetColumnWidth($hWnd,0)										; Fetch the first coulmn width
 
-	ControlClick($WIN_BUSMASTER,"",$LVC_TestAuto_TestEditor,"Left",2,$SendItemPos[0]+$CtgColWidth+3,$SendItemPos[1])	; Double click on the "[Add Message]"
+	ControlClick($WIN_TestAutomationEditorTitle,"",$LVC_TestAuto_TestEditor,"Left",2,$SendItemPos[0]+$CtgColWidth+3,$SendItemPos[1])	; Double click on the "[Add Message]"
 	sleep(1000)
 
-	send("{DOWN 2}")																			; Select the msg
+	send("{DOWN 2}")																		; Select the msg
 	sleep(1000)
 
 	send("{ENTER}")
@@ -113,7 +113,7 @@ if winexists($WIN_BUSMASTER) then
 
 	$CtgColWidth=_GUICtrlListView_GetColumnWidth($hWnd,0)										; Fetch the first coulmn width
 
-	ControlClick($WIN_BUSMASTER,"",$LVC_TestAuto_TestEditor,"Left",2,$VerifyItemPos[0]+$CtgColWidth+3,$VerifyItemPos[1])	; Double click on the "[Add Message]"
+	ControlClick($WIN_TestAutomationEditorTitle,"",$LVC_TestAuto_TestEditor,"Left",2,$VerifyItemPos[0]+$CtgColWidth+3,$VerifyItemPos[1])	; Double click on the "[Add Message]"
 	sleep(1000)
 
 	send("{DOWN 2}")																			; Select the msg
@@ -132,7 +132,7 @@ if winexists($WIN_BUSMASTER) then
 
 	$CtgColWidth=_GUICtrlListView_GetColumnWidth($hWnd,0)										; Fetch the first coulmn width
 
-	ControlClick($WIN_BUSMASTER,"",$LVC_TestAuto_TestEditor,"Left",2,$VerifyMsgItemPos[0]+$CtgColWidth+3,$VerifyMsgItemPos[1])	; Double click on the "Signal Unit Type"
+	ControlClick($WIN_TestAutomationEditorTitle,"",$LVC_TestAuto_TestEditor,"Left",2,$VerifyMsgItemPos[0]+$CtgColWidth+3,$VerifyMsgItemPos[1])	; Double click on the "Signal Unit Type"
 	sleep(1000)
 
 	send("{DOWN}")																				; Select the type
@@ -146,7 +146,7 @@ if winexists($WIN_BUSMASTER) then
 
 	_ClickTestEditConfirmBTN()																	; Click on Confirm button
 
-	Send("^{F4}")																				; Close Test Editor window
+	Send("!{F4}")																				; Close Test Editor window
 
 	_OpenTestAutomationExecutor()																; Open Test executor window
 
@@ -156,10 +156,12 @@ if winexists($WIN_BUSMASTER) then
 
 	_TestExeTreeMenu($TestExe_ExecuteMenu)														; Execute the test
 
-	_ConnectDisconnect()																		; Disconnect
+     sleep(2000)
+
 
 	$TExeHWD= ControlGetHandle($WIN_BUSMASTER,"",$LVC_TestCaseResult_TestExe)
 	$TExeCount=_GUICtrlListView_GetItemCount($TExeHWD)											; Fetch the TestExecutor item count
+	ConsoleWrite("$TExeCount :"&$TExeCount&@CRLF)
 
 	if $TExeCount=6 Then
 		$TestCaseName=_GetTestExecutorInfo(0)
@@ -182,12 +184,18 @@ if winexists($WIN_BUSMASTER) then
 	ConsoleWrite("$TExeCount:"&$TExeCount&@CRLF)
 	ConsoleWrite("$TestExeRes:"&$TestExeRes&@CRLF)
 
-	Send("^{F4}")																				; Close Test executor window
+
+    Opt("WinDetectHiddenText", 0)                                                                  ; Close Test executor window
+	Opt("WinSearchChildren", 1)
+	Opt("WinTitleMatchMode", 1)
+	WinClose("Test Suite Executor")
 	sleep(1000)
+	_ConnectDisconnect()																		; Disconnect
 
 	_OpenTestAutomationEditor()																	; Open test automation editor window
+	_LoadTestSetupFile(_TestDataPath()&"\TestAuto_04")
 
-	ControlFocus ($WIN_BUSMASTER,"",$TVC_TestAuto_TestEditor)									; Focus on the tree view
+	ControlFocus ($WIN_TestAutomationEditorTitle,"",$TVC_TestAuto_TestEditor)									; Focus on the tree view
 
 	_SelectTestSetUpNode()																		; Select the test setup node
 
@@ -204,7 +212,7 @@ if winexists($WIN_BUSMASTER) then
 	send("d")																					; Select "Delete" from context menu
 	sleep(1000)
 
-	send("{DOWN 3}")																			; Select Msg in verify node
+	send("{DOWN 3}")																		; Select Msg in verify node
 
 	$HWD=_GUICtrlTreeView_GetSelection($TVHWD)													; Fetch the handle of the selected node
 
@@ -216,13 +224,24 @@ if winexists($WIN_BUSMASTER) then
 
 	_ClickTestEditConfirmBTN()																	; Click on Confirm button
 
-	Send("^{F4}")																				; Close Test executor window
-	sleep(1000)
+	Send("!{F4}")																				; Close Test executor window
+	sleep(3000)
 
-	$Msg1=_GetMsgWinCANInfo(0)
+	$CountWinInfo=_GetCANMsgWinItemCount()
+	;$Msg1=_GetMsgWinCANInfo(0)
 
-	if $Msg1[1]="Tx" and $Msg1[3]="s" And $Msg1[4]="0x101" And $Msg1[5]="MsgStdLil" And $Msg1[7]= "0100000000000000" Then
-		$MsgTransmission=1
+	;if $Msg1[1]="Tx" and $Msg1[3]="s" And $Msg1[4]="0x101" And $Msg1[5]="MsgStdLil" And $Msg1[7]= "0100000000000000" Then
+	;	$MsgTransmission=1
+	;EndIf
+	;---Added below scripts to check Tx message in message window ------
+	If $CountWinInfo = 2 Then
+	for $i=0 To 1
+		$Msg1=_GetMsgWinCANInfo($i)
+		if $Msg1[1]="Tx" and $Msg1[3]="s" And $Msg1[4]="0x101" And $Msg1[5]="MsgStdLil" And $Msg1[7]= "0100000000000000" Then
+			$MsgTransmission=1
+			ConsoleWrite("$i="&$i&@CRLF)
+		EndIf
+	Next
 	EndIf
 
 	ConsoleWrite("$MsgTransmission:"&$MsgTransmission&@CRLF)
@@ -230,6 +249,8 @@ if winexists($WIN_BUSMASTER) then
 	$GetReportFile_Path=_OutputDataPath()
 
 	$Count=_FileCountLines($GetReportFile_Path & "\Report_04.TXT")								; Fetch the no. of lines in the report file
+	ConsoleWrite("$Count :"&$Count&@CRLF)
+
 	if $Count=26 Then
 		$ToolVersion=StringStripWS (FileReadLine ($GetReportFile_Path & "\Report_04.TXT",2),1)	; Fetch the tool version in the report file
 		$ReportFile=StringStripWS (FileReadLine ($GetReportFile_Path & "\Report_04.TXT",3),1)	; Fetch the Report file name in the report file
@@ -259,7 +280,18 @@ if winexists($WIN_BUSMASTER) then
 		consolewrite("$MsgName :"&$MsgName&@CRLF)
 		consolewrite("$Signal :"&$Signal&@CRLF)
 
-		$ToolVer=StringReplace(_GetToolVersion()," Ver","")																; Fetch the Busmaster Version
+		Local $ToolVer3[2]
+		ConsoleWrite("Tool version-------------"&_GetToolVersion()&@CRLF)
+		$ToolVer1=StringReplace(_GetToolVersion()," Ver","")																; Fetch the Busmaster Version
+		ConsoleWrite("$ToolVer :" &$ToolVer1&@CRLF)
+		$ToolVer2=StringReplace($ToolVer1,"Nightly",",")																		; Fetch the Busmaster Version
+		ConsoleWrite("$ToolVer2 :" &$ToolVer2&@CRLF)
+		Local $ToolVer3 = StringSplit($ToolVer2, ",")
+		$ToolVer4 =$ToolVer3[1]
+
+
+
+		$ToolVer=StringLeft($ToolVer4,15)
 		ConsoleWrite("$ToolVer :" &$ToolVer&@CRLF)
 		if $ToolVersion="BUSMASTER Version:: "& $ToolVer and $ReportFile="Report File For:: Test" Then
 			$ReportHeader=1
@@ -269,7 +301,7 @@ if winexists($WIN_BUSMASTER) then
 			$TestSetupInfo=1
 		EndIf
 
-		if $Result="Results:" and $TestCase="TestCase:  Test_4" and $ResultStatus="Result:	SUCCESS" and $VerifyStatus="Verify - 1 (Severity - SUCCESS)" and $MsgName="MsgStdLil:" and $Signal="Sigstd1X==1(x=1.000000)SUCCESS" Then
+		if $Result="Results:" and $TestCase="TestCase:  Test_4" and $ResultStatus="Result:	SUCCESS" and $VerifyStatus="Verify - 1 (Severity - SUCCESS)" and $MsgName="MsgStdLil:" and $Signal="Sigstd1X==1(x=1)SUCCESS" Then
 			$ResultInfo=1
 		EndIf
 
@@ -281,11 +313,17 @@ if winexists($WIN_BUSMASTER) then
 
 EndIf
 
-if $TestExeRes=1 and $MsgTransmission=1 and $ReportHeader=1 and $TestSetupInfo=1 and $ResultInfo=1 Then				; Validate the result
+;if $TestExeRes=1 and $MsgTransmission=1 and $ReportHeader=1 and $TestSetupInfo=1 and $ResultInfo=1 Then				; Validate the result
+if $TestExeRes=1 and $MsgTransmission=1 and $TestSetupInfo=1 and $ResultInfo=1 Then				; Validate the result
 	_WriteResult("Pass","TS_TestAuto_04")
 Else
 	_WriteResult("Fail","TS_TestAuto_04")
 EndIf
 
+$isAppNotRes=_CloseApp()															; Close the app
+
+if $isAppNotRes=1 Then
+	_WriteResult("Warning","TS_Log_05")
+EndIf
 ConsoleWrite("****End : TS_TestAuto_04.au3****"&@CRLF)
 ConsoleWrite(@CRLF)
